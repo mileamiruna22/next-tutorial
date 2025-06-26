@@ -1,6 +1,9 @@
+"use client"
+
 import { useMutation } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useRouter} from 'next/navigation'; 
 
 type ApiResponse = {
     message: string;
@@ -23,10 +26,11 @@ async function createProfileRequest() {
 export default function CreateProfile() {
 
     const {isLoaded, isSignedIn} = useUser();
+    const router = useRouter();
     const {mutate, isPending} = useMutation<ApiResponse, Error>({
         mutationFn: createProfileRequest,
-        onSuccess: (data) => {
-            console.log(data);
+        onSuccess: () => {
+            router.push("/subscribe");
         },
         onError: (error) => {
             console.error(error);

@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import {prisma} from '@/lib/prisma';
+//import {prisma} from '@/lib/prisma';
+import prisma from "@/lib/prisma";
 
 export async function POST() {
     try {
@@ -26,12 +27,12 @@ export async function POST() {
         },
     });
 
-    if(!existingProfile) {
-        return NextResponse.json(
-            {message: "Profile already exists"},
-            );
+    if(existingProfile) {
+       return NextResponse.json(
+            { message: "Profile already exists" },
+            { status: 200 } 
+        );
     }
-
 
     await prisma.profile.create({
         data: {
@@ -47,6 +48,7 @@ export async function POST() {
         {message: "Profile created successfully"},
         {status: 201}
     );
+
     } catch (error: any) {
         return NextResponse.json(
          {error: "internal error."},
