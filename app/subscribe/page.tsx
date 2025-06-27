@@ -1,6 +1,71 @@
+"use client"
+
 import { availablePlans } from "@/lib/plans"; 
+import {useMutation} from "@tanstack/react-query";
+import { useUser } from "@clerk/nextjs"; 
+import { useRouter } from "next/navigation";
+
+
+type SubscribeResponse = {url: string}
+type SubscribeError = {error: string}
+
+async function subscribeToPlan(
+  planType: string, 
+  userId: string, 
+  email:string
+): Promise<SubscribeResponse> {
+
+  const response = await fetch("/api/checkout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+
+     body: JSON.stringify({
+        planType,
+        userId,
+        email
+      }),    
+  });
+
+  if (!response.ok) {
+    const errorData : SubscribeError = await response.json();
+    throw new Error(errorData.error || "Something went wrong.");
+  }
+
+  const data: SubscribeResponse = await response.json();
+
+  return data;
+   
+}
 
 export default function Subscribe() {
+
+  const {user} = useUser();
+  const router = useRouter();
+
+  const userId = user?.id;
+  const email = user?.emailAddresses[0]?.emailAddress || "";
+
+  const {mutate, isPending} = useMutation<SubscribeResponse, Error, {planType: string}>({
+    mutationFn: async (planType) => {
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      return subscribeToPlan(planType, userId, email);
+    }
+  });
+
+  function handleSubscribe(planType: string) {
+
+    if (!userId) {
+      router.push("/sign-up");
+      return;
+    }
+
+    mutate({planType});
+  }
   return (
     <div className="min-h-screen bg-white text-gray-900 py-16 px-4 sm:px-6 lg:px-8">
       
@@ -74,8 +139,11 @@ export default function Subscribe() {
                 } 
                 ${plan.isPopular ? "shadow-md" : "shadow-sm"}
               `}
+
+              onClick = {() => handleSubscribe(plan.interval)}
+              disabled={isPending}
             >
-              Subscribe {plan.name}
+              {isPending ? "Please waiting..." : `Subscribe ${plan.name}`}
             </button>
           </div>
         ))}
@@ -83,3 +151,4 @@ export default function Subscribe() {
     </div>
   );
 }
+
