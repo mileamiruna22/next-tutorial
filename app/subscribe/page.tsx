@@ -15,7 +15,7 @@ async function subscribeToPlan(
   email:string
 ): Promise<SubscribeResponse> {
 
-  const response = await fetch("/api/checkout", {
+  const response = await fetch("/api/create-profile/checkout", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -47,13 +47,21 @@ export default function Subscribe() {
   const userId = user?.id;
   const email = user?.emailAddresses[0]?.emailAddress || "";
 
-  const {mutate, isPending} = useMutation<SubscribeResponse, Error, {planType: string}>({
+  const {mutate, isPending} = useMutation<SubscribeResponse, Error, string>({
     mutationFn: async (planType) => {
       if (!userId) {
         throw new Error("User not authenticated");
       }
 
       return subscribeToPlan(planType, userId, email);
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error) => {
+      console.error("Subscription error:", error);
     }
   });
 
@@ -64,7 +72,7 @@ export default function Subscribe() {
       return;
     }
 
-    mutate({planType});
+    mutate(planType);
   }
   return (
     <div className="min-h-screen bg-white text-gray-900 py-16 px-4 sm:px-6 lg:px-8">
@@ -151,4 +159,3 @@ export default function Subscribe() {
     </div>
   );
 }
-

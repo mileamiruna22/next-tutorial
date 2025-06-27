@@ -4,9 +4,13 @@ import { stripe } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
 try {
-    const {planType, userId, email} = await request.json();
+    const body = await request.json();
+    console.log("Received body:", body); 
+    
+    const {planType, userId, email} = body;
 
     if (!planType || !userId || !email) {
+        console.log("Missing fields:", { planType: !!planType, userId: !!userId, email: !!email }); 
         return NextResponse.json(
             {error: "planType, userId, and email are required."}, 
             { status: 400 });
@@ -14,6 +18,7 @@ try {
 
     const allowedPlanTypes = ["week", "month", "year"];
     if (!allowedPlanTypes.includes(planType)) {
+        console.log("Invalid planType:", planType); 
         return NextResponse.json(
             {error: "Invalid planType"}, 
             { status: 400 });
@@ -21,10 +26,13 @@ try {
 
     const priceID = getPriceIDFromType(planType);
     if (!priceID) {
+        console.log("No price ID found for planType:", planType); 
         return NextResponse.json(
             {error: "Invalid price id"}, 
             { status: 400 });
     }
+
+    console.log("Creating Stripe session with priceID:", priceID); 
 
     const session = await stripe.checkout.sessions.create({
         mode: "subscription",
@@ -44,6 +52,7 @@ try {
 
     return NextResponse.json({url: session.url});
 }catch (error: any) {
+    console.error("Stripe checkout error:", error); 
     return NextResponse.json(
         {error: "Internal server error."}, 
         { status: 500 }
