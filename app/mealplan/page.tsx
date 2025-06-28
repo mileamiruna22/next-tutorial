@@ -27,14 +27,14 @@ interface MealPlanResponse {
     error?: string;
 }
 
-async function generateMealPlan(payload: MealPlanInput): Promise<MealPlanResponse> {
+async function generateMealPlan(payload: MealPlanInput) {
     const response = await fetch("/api/generate-mealplan", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-    })
+    });
 
     return response.json();
 }
