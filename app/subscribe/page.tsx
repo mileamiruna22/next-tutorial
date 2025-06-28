@@ -4,7 +4,7 @@ import { availablePlans } from "@/lib/plans";
 import {useMutation} from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs"; 
 import { useRouter } from "next/navigation";
-
+import toast, {Toaster} from 'react-hot-toast';;
 
 type SubscribeResponse = {url: string}
 type SubscribeError = {error: string}
@@ -15,7 +15,7 @@ async function subscribeToPlan(
   email:string
 ): Promise<SubscribeResponse> {
 
-  const response = await fetch("/api/create-profile/checkout", {
+  const response = await fetch("/api/checkout", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -55,13 +55,17 @@ export default function Subscribe() {
 
       return subscribeToPlan(planType, userId, email);
     },
+    onMutate: () => {
+      toast.loading("Processing your subscription...");
+    },
+
     onSuccess: (data) => {
       if (data.url) {
         window.location.href = data.url;
       }
     },
-    onError: (error) => {
-      console.error("Subscription error:", error);
+    onError: () => {
+      toast.error("Something went wrong.");
     }
   });
 
@@ -76,7 +80,7 @@ export default function Subscribe() {
   }
   return (
     <div className="min-h-screen bg-white text-gray-900 py-16 px-4 sm:px-6 lg:px-8">
-      
+      <Toaster position="top-center" />
       <div className="text-center mb-12">
         <h2 className="text-5xl font-bold text-gray-900 mb-4">Pricing</h2>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
