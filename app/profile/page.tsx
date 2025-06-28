@@ -2,12 +2,12 @@
 
 import { useUser } from '@clerk/nextjs';
 import { Spinner } from "@/components/spinner";
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import Image from 'next/image';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { availablePlans } from "@/lib/plans";
-import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 async function fetchSubscriptionStatus() {
     const response = await fetch("/api/profile/subscription-status");
@@ -26,11 +26,25 @@ async function updatePlan(newPlan: string) {
     return response.json();
 }
 
+
+async function unsubscribe() {
+    const response = await fetch("/api/profile/unsubscribe", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },      
+    });
+
+    return response.json();
+}
+
 export default function Profile ()
 {
     const [selectedPlan, setSelectedPlan] = useState<string>("");
     const {isLoaded, isSignedIn, user } = useUser();
-    const {data: subscription, isLoading, isError, error} = useQuery({
+    const queryClient = useQueryClient();
+    const router = useRouter();
+    const {data: subscription, isLoading, isError, error, refetch} = useQuery({
         queryKey: ["subscription"],
         queryFn: fetchSubscriptionStatus,
         enabled: isSignedIn && isLoaded,
@@ -39,6 +53,28 @@ export default function Profile ()
 
     const {data: updatedPlan, mutate: updatePlanMutation, isPending: isUpdatePlanPending} = useMutation({
         mutationFn: updatePlan,
+         onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ["subscription"]});
+            toast.success("Plan updated successfully!");
+            refetch();
+        },
+
+        onError: () => {
+            toast.error("Error updating plan. Please try again.");
+        },
+    });
+
+    const {data: canceledPlan, mutate: unsubscribeMutation, isPending: isUnsubscribePending} = useMutation({
+        mutationFn: unsubscribe,
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ["subscription"]});
+            router.push("/subscribe");
+            refetch();
+        },
+
+        onError: () => {
+            toast.error("Error unsubscribing. Please try again.");
+        },
     });
     
     const currentPlan = availablePlans.find(
@@ -50,6 +86,12 @@ export default function Profile ()
             updatePlanMutation(selectedPlan);
         }
         setSelectedPlan("");
+    }
+
+    function handleUnsubscribe() {
+        if(confirm("Are you sure you want to unsubscribe? You will lose access to premium features.")) {
+            unsubscribeMutation();
+        }
     }
 
     if(!isLoaded) {
@@ -64,7 +106,7 @@ export default function Profile ()
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-100 to-green-50"> 
         <Toaster position="top-center"/>
         <div className="flex w-full max-w-3xl bg-white rounded-lg shadow-xl overflow-hidden">
-           
+            
             <div className="w-1/3 bg-green-600 p-6 flex flex-col items-center justify-center text-white text-center rounded-l-lg">
                 <div className="mb-4">
                    {user.imageUrl &&  
@@ -80,12 +122,12 @@ export default function Profile ()
                 <p className="text-sm opacity-90">{user.primaryEmailAddress?.emailAddress}</p>
             </div>
 
-           
-            <div className="w-2/3 p-8">
+            
+            <div className="w-2/3 p-8 space-y-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                     Subscription Details
                 </h2>
-                <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                <div className="bg-white shadow-md rounded-lg p-4 border border-emerald-200">
                     { isLoading ? 
                         (
                         <div className="flex items-center text-gray-600"> 
@@ -117,7 +159,6 @@ export default function Profile ()
                         )}
                 </div>
 
-
                 <div className="bg-white shadow-md rounded-lg p-4 border border-emerald-200">
                     <h3 className="text-xl font-semibold mb-2 text-emerald-600">
                         Change Subscription Plan
@@ -139,14 +180,33 @@ export default function Profile ()
                             </option>
                             ))}
                         </select>
-                  `   <button onClick={handleUpdatePlan}
-                        className="mt-3 p-2 bg-emerald-500 rounded-lg textwhite"
-                        > Save Change</button>
-                     { isUpdatePlanPending && (
-                        <div className="flex items-center mt-2">
-                            <Spinner/> <span> Updating Plan...</span>
+                     <button 
+                        onClick={handleUpdatePlan}
+                        className="mt-3 p-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isUpdatePlanPending || !selectedPlan}
+                    > 
+                        Save Change
+                    </button>
+                    { isUpdatePlanPending && (
+                        <div className="flex items-center mt-2 text-gray-600">
+                            <Spinner/> <span className="ml-2"> Updating Plan...</span>
                         </div>
-                     )}
+                    )}
+                </div>
+
+                <div className="bg-white shadow-md rounded-lg p-4 border border-emerald-200">
+                    <h3 className="text-xl font-semibold mb-2 text-emerald-600">
+                        Unsubscribe
+                    </h3>
+                    <button
+                        onClick={handleUnsubscribe}
+                        disabled={isUnsubscribePending}
+                        className={`w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition-colors ${
+                        isUnsubscribePending ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                    >
+                        {isUnsubscribePending ? "Unsubscribing..." : "Unsubscribe"}
+                    </button>
                 </div>
             </div>
         </div>
